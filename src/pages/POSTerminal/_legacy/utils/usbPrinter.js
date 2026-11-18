@@ -793,10 +793,6 @@ export const printReceiptViaUsb = async (
 ) => {
   const cfg = getPrinterConfig();
   if (cfg.receiptPrintMode !== 'usb' || !cfg.counterPrinterId) return false;
-  // This printer prints text reliably but does not decode either ESC/POS
-  // bit-image mode correctly. The browser receipt includes the same stored
-  // logo as a real <img>, so use the system print path whenever one is set.
-  if (cfg.restaurantLogo) return false;
   const logo = await buildLogoEscPos(cfg.restaurantLogo);
   const data = buildReceiptEscPos(transaction, outletName, cashierName, logo, { generatedAt });
   return printRaw(cfg.counterPrinterId, data, { verifyStatus: cfg.verifyPrinterStatus });
