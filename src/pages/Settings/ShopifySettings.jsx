@@ -33,7 +33,7 @@ const ShopifySettings = () => {
   const [catalogMatches, setCatalogMatches] = useState([]);
   const [catalogSearch, setCatalogSearch] = useState('');
   const [barcodeDrafts, setBarcodeDrafts] = useState({});
-  const [credentials, setCredentials] = useState({ shopDomain: '' });
+  const [credentials, setCredentials] = useState({ shopDomain: '', clientId: '', clientSecret: '' });
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState('');
   const [error, setError] = useState('');
@@ -83,6 +83,7 @@ const ShopifySettings = () => {
   const handleConnect = async (event) => {
     event.preventDefault();
     const response = await runAction('connect', () => connectShopify({ ...credentials, onlineOrderOutlet }), 'Shopify setup saved.');
+    if (response?.data?.success) setCredentials((current) => ({ ...current, clientId: '', clientSecret: '' }));
   };
 
   const loadLocations = async () => {
@@ -114,6 +115,8 @@ const ShopifySettings = () => {
   };
   const saveBarcode = (variantId) => runAction(`barcode:${variantId}`, () => updateRetailBarcode(variantId, barcodeDrafts[variantId] || ''), 'Barcode saved.');
   const connected = connection?.status === 'connected';
+  const credentialsConfiguredForShop = connection?.credentialsConfigured && connection.shopDomain === credentials.shopDomain;
+  const credentialsRequired = !credentialsConfiguredForShop;
 
   if (loading && !connection) return <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading Shopify settings…</div>;
 
@@ -143,10 +146,16 @@ const ShopifySettings = () => {
 
       <form onSubmit={handleConnect} className="rounded-xl border border-gray-200 bg-white p-5">
         <h3 className="font-semibold text-gray-900">Store credentials</h3>
-        <p className="mt-1 text-sm text-gray-500">Shopify app credentials are configured securely on the backend. Enter your store domain and choose the outlet for online orders.</p>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <p className="mt-1 text-sm text-gray-500">Connect this boutique’s Shopify app. Credentials are encrypted in this boutique’s database. Re-enter the client ID and secret only when connecting a new app or replacing credentials.</p>
+        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <label className="text-sm font-medium text-gray-700">Shop domain
             <input className={inputClass} autoComplete="url" placeholder="your-store.myshopify.com" value={credentials.shopDomain} onChange={(event) => setCredentials({ ...credentials, shopDomain: event.target.value })} required />
+          </label>
+          <label className="text-sm font-medium text-gray-700">Shopify app client ID
+            <input className={inputClass} autoComplete="off" placeholder={credentialsConfiguredForShop ? 'Saved securely — leave blank to keep' : 'Enter app client ID'} value={credentials.clientId} onChange={(event) => setCredentials({ ...credentials, clientId: event.target.value })} required={credentialsRequired} />
+          </label>
+          <label className="text-sm font-medium text-gray-700">Shopify app client secret
+            <input className={inputClass} type="password" autoComplete="new-password" placeholder={credentialsConfiguredForShop ? 'Saved securely — leave blank to keep' : 'Enter app client secret'} value={credentials.clientSecret} onChange={(event) => setCredentials({ ...credentials, clientSecret: event.target.value })} required={credentialsRequired} />
           </label>
           <FloatingSelect label="Outlet for Shopify online orders" options={outlets.map((outlet) => ({ value: String(outlet._id), label: outlet.name, meta: outlet.code || '' }))} value={onlineOrderOutlet} onChange={setOnlineOrderOutlet} placeholder="Select an outlet" containerClassName="text-sm font-medium text-gray-700" />
         </div>
