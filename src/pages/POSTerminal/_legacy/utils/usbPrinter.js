@@ -557,7 +557,9 @@ export const buildReceiptEscPos = (
   data += line('Thank you — please come again!');
   data += line(`Bill generated ${fmtTime(generatedAt, transaction.timezone)}`);
   data += line('Powered by Cenciss');
-  data += FEED(4);
+  // Leave enough paper after the final line for printers whose cutter sits
+  // several millimetres below the print head.
+  data += FEED(8);
   data += CUT;
   return data;
 };
@@ -749,6 +751,11 @@ export const printRaw = async (printerId, data, { verifyStatus = true } = {}) =>
       }
       bytesWritten += result.bytesWritten;
     }
+
+    // USB transfer completion means the endpoint accepted the bytes; many
+    // thermal printers still need time to render the final lines and cut.
+    // Keep the interface open so closing it cannot truncate the customer copy.
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     if (verifyStatus) {
       await new Promise((resolve) => setTimeout(resolve, 150));
