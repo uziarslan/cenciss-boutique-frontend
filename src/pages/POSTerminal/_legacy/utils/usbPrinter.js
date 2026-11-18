@@ -679,7 +679,7 @@ const bytesToBinaryString = (bytes) => {
   return result;
 };
 
-/** Convert a stored logo to the classic ESC/POS 24-dot bit-image command. */
+/** Convert a stored logo to the broadly supported ESC/POS 8-dot bit-image command. */
 export const buildLogoEscPos = async (dataUrl) => {
   if (!dataUrl) return '';
   const image = await loadImage(dataUrl);
@@ -696,27 +696,27 @@ export const buildLogoEscPos = async (dataUrl) => {
   context.drawImage(image, 0, 0, Math.round(image.width * scale), height);
   const pixels = context.getImageData(0, 0, width, height).data;
   const command = [];
-  // ESC * mode 33 is the traditional 24-dot double-density image command.
-  // It is supported by older ESC/POS printers that treat GS v 0 data as text.
-  for (let bandY = 0; bandY < height; bandY += 24) {
-    command.push(0x1b, 0x2a, 33, width & 0xff, (width >> 8) & 0xff);
+  // Mode 0 uses one byte per x-column and one 8-dot band, avoiding the newer
+  // 24-dot and GS v 0 raster formats that some receipt printer clones misread.
+  command.push(0x1b, 0x33, 8); // ESC 3: set line spacing to the image band height.
+  for (let bandY = 0; bandY < height; bandY += 8) {
+    command.push(0x1b, 0x2a, 0, width & 0xff, (width >> 8) & 0xff);
     for (let x = 0; x < width; x += 1) {
-      for (let plane = 0; plane < 3; plane += 1) {
-        let column = 0;
-        for (let bit = 0; bit < 8; bit += 1) {
-          const y = bandY + (plane * 8) + bit;
-          if (y >= height) continue;
-          const pixel = (y * width + x) * 4;
-          const alpha = pixels[pixel + 3] / 255;
-          const luminance = (pixels[pixel] * 0.299) + (pixels[pixel + 1] * 0.587) + (pixels[pixel + 2] * 0.114);
-          if (alpha > 0.15 && luminance < 170) column |= (0x80 >> bit);
-        }
-        command.push(column);
+      let column = 0;
+      for (let bit = 0; bit < 8; bit += 1) {
+        const y = bandY + bit;
+        if (y >= height) continue;
+        const pixel = (y * width + x) * 4;
+        const alpha = pixels[pixel + 3] / 255;
+        const luminance = (pixels[pixel] * 0.299) + (pixels[pixel + 1] * 0.587) + (pixels[pixel + 2] * 0.114);
+        if (alpha > 0.15 && luminance < 170) column |= (0x80 >> bit);
       }
+      command.push(column);
     }
-    // Line feed advances exactly one 24-dot image band before the next one.
+    // Line feed advances exactly one 8-dot image band before the next one.
     command.push(0x0a);
   }
+  command.push(0x1b, 0x32); // ESC 2: restore the printer's default line spacing.
   return `${ALIGN.center}${bytesToBinaryString(Uint8Array.from(command))}`;
 };
 
