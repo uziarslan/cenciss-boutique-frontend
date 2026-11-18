@@ -1,0 +1,5 @@
+# Existing files shadow this rule. A missing hashed asset must return 404
+# instead of the SPA HTML shell, which browsers cannot import as JavaScript.
+/assets/* /asset-not-found.txt 404
+
+/* /index.html 200

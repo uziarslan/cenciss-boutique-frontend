@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <title>Cenciss · Boutique Operations</title>
+    <meta
+      name="description"
+      content="Cenciss Boutique brings Shopify inventory, point of sale, manufacturing, purchasing, accounts, and team operations together."
+    />
+    <meta name="application-name" content="Cenciss" />
+    <meta name="apple-mobile-web-app-title" content="Cenciss" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- Theme color (matches the dark UI shell) -->
+    <meta name="theme-color" content="#020617" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#020617" media="(prefers-color-scheme: light)" />
+    <meta name="color-scheme" content="dark light" />
+
+    <!-- Favicons -->
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/svg+xml" href="/favicon-light.svg" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/svg+xml" href="/favicon-dark.svg" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Cenciss" />
+    <meta property="og:title" content="Cenciss · Boutique Operations" />
+    <meta
+      property="og:description"
+      content="POS, inventory, purchase &amp; accounts, and team attendance in one place."
+    />
+    <meta property="og:image" content="/Cenciss-04-01.png" />
+    <meta property="og:image:alt" content="Cenciss" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Cenciss · Restaurant Operations OS" />
+    <meta
+      name="twitter:description"
+      content="POS, inventory, purchase &amp; accounts, and team attendance in one place."
+    />
+    <meta name="twitter:image" content="/Cenciss-04-01.png" />
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root">
+      <div
+        id="app-boot-loader"
+        role="status"
+        aria-label="Loading Cenciss"
+        style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#020617;color:#cbd5e1;font:600 14px system-ui,sans-serif;letter-spacing:.02em"
+      >
+        Loading Cenciss…
+      </div>
+    </div>
+    <script>
+      // Entry-module failures happen before React can render an error boundary.
+      // If a stale service worker/cache ever leaves the root empty, perform one
+      // automatic clean recovery—the equivalent of the user's hard refresh.
+      (() => {
+        const recoveryKey = 'cenciss:boot-recovery';
+        const recoveryCooldownMs = 60000;
+
+        window.setTimeout(async () => {
+          const root = document.getElementById('root');
+          if (window.__CENCISS_APP_BOOTED__ && root?.childElementCount) return;
+
+          const now = Date.now();
+          try {
+            const previous = Number(sessionStorage.getItem(recoveryKey)) || 0;
+            if (now - previous < recoveryCooldownMs) return;
+            sessionStorage.setItem(recoveryKey, String(now));
+          } catch {
+            // Storage can be unavailable in private/embedded browser modes.
+          }
+
+          try {
+            if ('serviceWorker' in navigator) {
+              const registrations = await navigator.serviceWorker.getRegistrations();
+              await Promise.all(registrations.map((registration) => registration.unregister()));
+            }
+            if ('caches' in window) {
+              const keys = await caches.keys();
+              await Promise.all(keys
+                .filter((key) => key.startsWith('cenciss-pos-'))
+                .map((key) => caches.delete(key)));
+            }
+          } finally {
+            const url = new URL(window.location.href);
+            url.searchParams.set('__app_recovery', String(now));
+            window.location.replace(url.href);
+          }
+        }, 4000);
+      })();
+    </script>
+    <script type="module" src="/src/index.jsx"></script>
+  </body>
+</html>

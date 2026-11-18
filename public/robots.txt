@@ -1,0 +1,10 @@
+User-agent: *
+Disallow: /api/
+Disallow: /onboarding/
+Disallow: /billing/
+Disallow: /dashboard
+Disallow: /pos
+Disallow: /settings
+Allow: /
+
+Sitemap: https://pos.cenciss.com/sitemap.xml
