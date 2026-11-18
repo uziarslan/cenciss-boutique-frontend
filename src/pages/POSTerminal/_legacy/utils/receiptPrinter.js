@@ -312,7 +312,6 @@ export const buildReceiptHtml = (
       <div style="text-align:center;font-size:11px;font-weight:bold;">Thank you — please come again!</div>
       <div style="text-align:center;font-size:9px;margin-top:4px;">Bill generated ${fmtDateTime(generatedAt, transaction.timezone)}</div>
       <div style="text-align:center;font-size:9px;font-weight:bold;margin-top:6px;">Powered by Cenciss</div>
-      <div style="text-align:center;font-size:9px;">www.cenciss.com</div>
     </div>
   `;
 
