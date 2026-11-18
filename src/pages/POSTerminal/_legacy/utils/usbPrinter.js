@@ -557,6 +557,7 @@ export const buildReceiptEscPos = (
   data += line('Thank you — please come again!');
   data += line(`Bill generated ${fmtTime(generatedAt, transaction.timezone)}`);
   data += line('Powered by Cenciss');
+  data += line('www.cenciss.com');
   // Leave enough paper after the final line for printers whose cutter sits
   // several millimetres below the print head.
   data += FEED(8);
