@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { Image as ImageIcon, Monitor, Printer, RefreshCw, Trash2, Usb } from 'lucide-react';
 import toast from 'react-hot-toast';
 import FloatingSelect from '../../components/UI/FloatingSelect';
+import { printReceipt } from '../POSTerminal/_legacy/utils/receiptPrinter';
 import {
-  buildLogoEscPos,
   buildReceiptEscPos,
   connectUsbPrinter,
   forgetUsbPrinter,
@@ -100,9 +100,13 @@ const BoutiquePrinterSettings = () => {
     if (!config.counterPrinterId) return toast.error('Pair and select a receipt printer first.');
     setWorking('print');
     try {
-      const logo = await buildLogoEscPos(config.restaurantLogo);
-      await printRaw(config.counterPrinterId, buildReceiptEscPos(sampleReceipt, 'Boutique outlet', 'Printer test', logo), { verifyStatus: config.verifyPrinterStatus });
-      toast.success('Sample receipt sent to the printer.');
+      if (config.restaurantLogo) {
+        await printReceipt(sampleReceipt, 'Boutique outlet', 'Printer test');
+        toast.success('Sample receipt opened in the system print dialog.');
+      } else {
+        await printRaw(config.counterPrinterId, buildReceiptEscPos(sampleReceipt, 'Boutique outlet', 'Printer test'), { verifyStatus: config.verifyPrinterStatus });
+        toast.success('Sample receipt sent to the printer.');
+      }
     } catch (error) { toast.error(error?.message || 'Could not print the sample receipt.'); }
     finally { setWorking(''); }
   };
