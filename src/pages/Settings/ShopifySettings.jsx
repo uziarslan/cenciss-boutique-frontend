@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AlertCircle, CheckCircle2, RefreshCw, RotateCw, Save, ShoppingBag, Webhook } from 'lucide-react';
+import { AlertCircle, CheckCircle2, RefreshCw, RotateCw, Save, ShoppingBag, Webhook, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import FloatingSelect from '../../components/UI/FloatingSelect';
 import Pagination from '../../components/UI/Pagination';
 import useQueryState from '../../hooks/useQueryState';
 import {
   connectShopify,
+  cancelShopifyCatalogSync,
   getShopifyEvents,
   getShopifyLocations,
   getShopifySettings,
@@ -148,6 +149,7 @@ const ShopifySettings = () => {
   const credentialsConfiguredForShop = Boolean(connection?.shopDomain && connection?.status !== 'disconnected');
   const credentialsRequired = !credentialsConfiguredForShop;
   const catalogSync = connection?.catalogSync || {};
+  const activeCatalogTask = backgroundTasks.find((task) => task.type === 'catalog-sync' && ['pending', 'processing'].includes(task.status));
   const catalogSyncRunning = working === 'sync' || catalogSync.status === 'running';
   const catalogSyncElapsed = catalogSync.startedAt
     ? Math.max(0, Math.floor((syncClock - new Date(catalogSync.startedAt).getTime()) / 1000))
@@ -229,7 +231,7 @@ const ShopifySettings = () => {
         {catalogSyncRunning && <div role="status" aria-live="polite" className="mt-4 rounded-lg border border-indigo-100 bg-indigo-50 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <p className="font-semibold text-indigo-950">Shopify catalog sync is in progress</p>
-            <p className="text-xs font-medium text-indigo-700">{Math.floor(catalogSyncElapsed / 60)}m {catalogSyncElapsed % 60}s elapsed</p>
+            <div className="flex items-center gap-3"><p className="text-xs font-medium text-indigo-700">{Math.floor(catalogSyncElapsed / 60)}m {catalogSyncElapsed % 60}s elapsed</p><button type="button" onClick={() => runAction('cancel-sync', cancelShopifyCatalogSync, 'Catalog sync cancellation requested.')} disabled={!!working || activeCatalogTask?.cancelRequested} className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"><XCircle size={14} />{activeCatalogTask?.cancelRequested ? 'Cancelling…' : 'Cancel sync'}</button></div>
           </div>
           <p className="mt-1 text-sm text-indigo-800">{catalogSync.stage || 'Connecting to Shopify…'}</p>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-indigo-100"><div className="h-full w-1/3 animate-[shopify-progress_1.4s_ease-in-out_infinite] rounded-full bg-indigo-600" /></div>
@@ -242,6 +244,7 @@ const ShopifySettings = () => {
         </div>}
         {!catalogSyncRunning && catalogSync.status === 'complete' && catalogSync.finishedAt && <p role="status" className="mt-3 text-sm text-emerald-700">Last catalog sync completed at {dateText(catalogSync.finishedAt)} · {Number(catalogSync.productsWritten || 0).toLocaleString()} products and {Number(catalogSync.variantsWritten || 0).toLocaleString()} variants updated.</p>}
         {!catalogSyncRunning && catalogSync.status === 'failed' && <p role="alert" className="mt-3 text-sm text-red-700">Last catalog sync failed: {catalogSync.error || 'See the error above for details.'}</p>}
+        {!catalogSyncRunning && catalogSync.status === 'cancelled' && <p role="status" className="mt-3 text-sm text-amber-800">Catalog sync was cancelled. Products imported before cancellation remain in the catalog.</p>}
         <div className="mt-4 flex flex-wrap gap-2">
           {(connection?.webhookSubscriptions || []).map((item) => <span key={item.topic} className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs text-emerald-800"><CheckCircle2 size={13} />{item.topic.replaceAll('_', ' ').toLowerCase()}</span>)}
           {!connection?.webhookSubscriptions?.length && <span className="text-sm text-amber-800">No webhook subscriptions are registered.</span>}
@@ -253,7 +256,7 @@ const ShopifySettings = () => {
         <div className="mt-4 divide-y divide-gray-100">
           {backgroundTasks.map((task) => <div key={task._id} className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0">
             <div><p className="text-sm font-medium text-gray-800">{({ 'catalog-sync': 'Catalog sync', 'product-update': 'Product update', 'barcode-update': 'Barcode update', 'order-reconcile': 'Recent order import', 'webhook-register': 'Webhook registration' })[task.type] || 'Shopify update'}</p><p className="text-xs text-gray-500">Started {dateText(task.startedAt || task.createdAt)}{task.attempts > 0 ? ` · Attempt ${task.attempts}` : ''}</p>{task.lastError && <p className="mt-1 text-xs text-red-700">{task.lastError}</p>}</div>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${task.status === 'complete' ? 'bg-emerald-100 text-emerald-800' : task.status === 'failed' ? 'bg-red-100 text-red-800' : 'bg-indigo-100 text-indigo-800'}`}>{task.status === 'pending' ? 'Queued' : task.status === 'processing' ? 'In progress' : task.status}</span>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${task.status === 'complete' ? 'bg-emerald-100 text-emerald-800' : task.status === 'failed' ? 'bg-red-100 text-red-800' : task.status === 'cancelled' ? 'bg-gray-100 text-gray-700' : 'bg-indigo-100 text-indigo-800'}`}>{task.status === 'pending' ? 'Queued' : task.status === 'processing' ? (task.cancelRequested ? 'Cancelling' : 'In progress') : task.status}</span>
           </div>)}
           {!backgroundTasks.length && <p className="py-2 text-sm text-gray-500">No background Shopify tasks yet.</p>}
         </div>

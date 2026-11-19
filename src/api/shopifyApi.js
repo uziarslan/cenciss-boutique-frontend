@@ -6,6 +6,7 @@ export const registerShopifyWebhooks = () => api.post('/api/shopify/webhooks/reg
 export const getShopifyLocations = () => api.get('/api/shopify/locations');
 export const saveShopifyLocationMappings = (payload) => api.put('/api/shopify/mappings', payload);
 export const syncShopifyCatalog = () => api.post('/api/shopify/catalog/sync');
+export const cancelShopifyCatalogSync = () => api.post('/api/shopify/catalog/sync/cancel');
 export const reconcileShopifyOrders = () => api.post('/api/shopify/orders/reconcile');
 export const getShopifyEvents = (params = {}) => api.get('/api/shopify/events', { params });
 export const retryShopifyEvent = (eventId) => api.post(`/api/shopify/events/${encodeURIComponent(eventId)}/retry`);
