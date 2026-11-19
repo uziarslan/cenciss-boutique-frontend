@@ -970,7 +970,7 @@ const RoleSettings = () => {
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold text-gray-800">POS discount limit</p>
                             <p className="text-xs text-gray-500 mt-0.5">
-                              Maximum combined item and order discount for this user. “Apply Discount” must also be granted.
+                              Maximum discount as a share of the sale subtotal. This also caps fixed rupee discounts; “Apply Discount” must be granted.
                             </p>
                           </div>
                           <div className="flex items-center gap-2">

@@ -36,6 +36,7 @@ import {
   QrCode,
   ScanFace,
   Printer,
+  ShoppingBag,
   ReceiptText,
   ChefHat,
   Bike,
@@ -122,10 +123,11 @@ export const NAV_ITEMS = [
   { to: '/reports/membership-movements', label: 'Rewards Movements',    icon: Activity,   roles: FINANCE, indent: true, feature: 'membershipRewards' },
   { to: '/reports/membership-summary',   label: 'Rewards Summary',      icon: Sparkles,   roles: FINANCE, indent: true, feature: 'membershipRewards' },
 
-  { groupLabel: 'Settings', roles: OWNER },
+  { groupLabel: 'Settings', roles: FINANCE },
   { to: '/settings/users',              label: 'User Management',    icon: UserCog,     roles: OWNER, indent: true },
   { to: '/settings/roles',              label: 'Role Settings',      icon: Shield,      roles: OWNER, indent: true },
   { to: '/settings/outlets',            label: 'Outlets',            icon: PackageOpen, roles: OWNER, indent: true },
+  { to: '/settings/integrations/shopify', label: 'Shopify',           icon: ShoppingBag, roles: FINANCE, indent: true },
   { to: '/settings/printers',           label: 'Printer Settings',   icon: Printer,     roles: OWNER, indent: true },
   { to: '/settings/kds',                label: 'KDS Settings',       icon: ChefHat,     roles: OWNER, indent: true, feature: 'kds' },
   { to: '/settings/tax',                label: 'Tax & FBR',          icon: Percent,     roles: OWNER, indent: true },
@@ -184,6 +186,7 @@ export const buildPermChecks = (has) => ({
   '/settings/users':                   () => has('settings.users'),
   '/settings/roles':                   () => has('settings.roles'),
   '/settings/outlets':                 () => has('settings.outlets'),
+  '/settings/integrations/shopify':    () => has('settings.integrations'),
   '/settings/printers':                () => has('settings.printers'),
 });
 

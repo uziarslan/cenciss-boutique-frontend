@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Boxes, Check, Factory, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import usePermissions from '../../hooks/usePermissions';
+import useQueryState from '../../hooks/useQueryState';
 import FloatingSelect from '../../components/UI/FloatingSelect';
 import {
   completeProductionOrder,
@@ -21,7 +22,7 @@ const ProductionManager = () => {
   const { has } = usePermissions();
   const canManage = has('inventory.manage');
   const [setup, setSetup] = useState({ outlets: [], materials: [], finishedVariants: [] });
-  const [outletId, setOutletId] = useState('');
+  const [outletId, setOutletId] = useQueryState('outlet', '');
   const [boms, setBoms] = useState([]);
   const [orders, setOrders] = useState([]);
   const [form, setForm] = useState(blankBom());
@@ -30,7 +31,7 @@ const ProductionManager = () => {
   const [completion, setCompletion] = useState({});
   const [working, setWorking] = useState(false);
 
-  const load = useCallback(async (targetOutlet = outletId) => {
+  const load = useCallback(async (targetOutlet = '') => {
     setWorking(true);
     try {
       const [setupResponse, bomsResponse, ordersResponse] = await Promise.all([
@@ -45,9 +46,9 @@ const ProductionManager = () => {
       setCompletion(Object.fromEntries(nextOrders.filter((order) => order.status === 'released').map((order) => [order._id, { producedQuantity: order.plannedQuantity, rejectedQuantity: 0 }])));
     } catch (error) { toast.error(error.response?.data?.message || 'Could not load manufacturing data.'); }
     finally { setWorking(false); }
-  }, [outletId]);
+  }, []);
 
-  useEffect(() => { load(''); }, []); // load the only outlet automatically, otherwise ask the manager to choose
+  useEffect(() => { load(outletId); }, [load, outletId]); // URL outlet selection also restores the matching materials and orders.
 
   const updateMaterial = (index, changes) => setForm((current) => ({ ...current, materials: current.materials.map((line, i) => i === index ? { ...line, ...changes } : line) }));
   const chooseMaterial = (index, productId) => {

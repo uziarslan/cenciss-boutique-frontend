@@ -590,7 +590,8 @@ const VariationPicker = ({ item, cartItems, onSelect, onClose }) => createPortal
 
 export const MenuView = ({ menu, cartItems, cartCount, cartTotal, addItem, removeItem, onCart, activeCount, statusCount, onOpenStatus }) => {
   const [search, setSearch] = useQueryState('search', '');
-  const [activeCat, setActiveCat] = useState(menu?.categories?.[0]?.name || '');
+  const [requestedCategory, setRequestedCategory] = useQueryState('category', '');
+  const activeCat = requestedCategory || menu?.categories?.[0]?.name || '';
   const [variationItem, setVariationItem] = useState(null);
   const [dealItem, setDealItem] = useState(null);
 
@@ -658,7 +659,7 @@ export const MenuView = ({ menu, cartItems, cartCount, cartTotal, addItem, remov
                 key={c.name}
                 type="button"
                 onClick={() => {
-                  setActiveCat(c.name);
+                  setRequestedCategory(c.name);
                   document.getElementById(`cat-${c.name}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }}
                 className={`shrink-0 whitespace-nowrap rounded-xl px-4 py-2 text-xs font-extrabold ring-1 transition ${

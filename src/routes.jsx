@@ -55,6 +55,7 @@ const StockCount = lazy(() => import('./pages/Inventory/StockCount'));
 const WasteLog = lazy(() => import('./pages/Inventory/WasteLog'));
 const InventoryInsights = lazy(() => import('./pages/Inventory/InventoryInsights'));
 const RetailInventory = lazy(() => import('./pages/Inventory/RetailInventory'));
+const RetailProductEdit = lazy(() => import('./pages/Inventory/RetailProductEdit'));
 const ProductionManager = lazy(() => import('./pages/Production/ProductionManager'));
 
 const StoreLayout = lazy(() => import('./pages/Store/StoreLayout'));
@@ -312,6 +313,7 @@ const AppRoutes = () => (
 
         {/* Boutique finished goods are imported from Shopify; legacy Kitchen flows are retired in this copy. */}
         <Route path="retail-inventory" element={P('inventory.view', <RetailInventory />)} />
+        <Route path="retail-inventory/:productId/edit" element={P('inventory.manage', <RetailProductEdit />)} />
         <Route path="production" element={P('inventory.view', <ProductionManager />)} />
         <Route path="inventory/*" element={<Navigate to="/retail-inventory" replace />} />
 
