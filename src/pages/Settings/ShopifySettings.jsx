@@ -30,7 +30,7 @@ const ShopifySettings = () => {
   const [backgroundTasks, setBackgroundTasks] = useState([]);
   const [webhookPage, setWebhookPage] = useQueryState('webhookPage', 1);
   const [webhookPageInfo, setWebhookPageInfo] = useState({ total: 0, pages: 1, pageSize: 50 });
-  const [credentials, setCredentials] = useState({ shopDomain: '' });
+  const [credentials, setCredentials] = useState({ shopDomain: '', clientId: '', clientSecret: '' });
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState('');
   const [error, setError] = useState('');
@@ -145,6 +145,8 @@ const ShopifySettings = () => {
 
   const retry = (id) => runAction(`retry:${id}`, () => retryShopifyEvent(id), 'Event queued for retry.');
   const connected = connection?.status === 'connected';
+  const credentialsConfiguredForShop = Boolean(connection?.shopDomain && connection?.status !== 'disconnected');
+  const credentialsRequired = !credentialsConfiguredForShop;
   const catalogSync = connection?.catalogSync || {};
   const catalogSyncRunning = working === 'sync' || catalogSync.status === 'running';
   const catalogSyncElapsed = catalogSync.startedAt
