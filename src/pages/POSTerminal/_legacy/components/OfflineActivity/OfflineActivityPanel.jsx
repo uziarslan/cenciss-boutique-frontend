@@ -22,6 +22,7 @@ import {
 } from '../../store/slices/offlineSlice';
 import { getOfflineCashAmountResolution } from '../../utils/offlineQueue';
 import ConfirmModal from '../UI/ConfirmModal';
+import useQueryState from '../../hooks/useQueryState';
 
 const formatMoney = (value) =>
   `PKR ${Number(value || 0).toLocaleString('en-PK', {
@@ -165,7 +166,7 @@ const OfflineActivityPanel = ({ isMobile, isOpen, onClose }) => {
     syncAll,
     reconcileSales,
   } = useOfflineQueue();
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useQueryState('activity', 'all');
   const [removeTarget, setRemoveTarget] = useState(null);
   const [amountTarget, setAmountTarget] = useState(null);
   const [removing, setRemoving] = useState(false);

@@ -51,7 +51,7 @@ const MembershipMovements = () => {
   const [type, setType] = useQueryState('type', '');
   const [outlet, setOutlet] = useQueryState('outlet', '');
   const { data: outlets = [] } = useGetOutletsQuery();
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useQueryState('page', 1);
 
   useEffect(() => {
     if (outlets.length === 1 && !outlet) setOutlet(outlets[0]._id || '');

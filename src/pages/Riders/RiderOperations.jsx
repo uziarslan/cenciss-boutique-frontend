@@ -30,6 +30,7 @@ import {
 import useFeatures from '../../hooks/useFeatures';
 import usePermissions from '../../hooks/usePermissions';
 import { getOpsSocket } from '../../utils/opsSocket';
+import useQueryState from '../../hooks/useQueryState';
 
 const dateValue = (date) => date.toISOString().slice(0, 10);
 const humanStatus = (value) => String(value || 'unknown').replaceAll('_', ' ');
@@ -83,14 +84,14 @@ const RiderOperations = () => {
   const { has } = usePermissions();
   const { hasFeature } = useFeatures();
   const [outlets, setOutlets] = useState([]);
-  const [outletId, setOutletId] = useState('');
+  const [outletId, setOutletId] = useQueryState('outlet', '');
   const [live, setLive] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState('live');
+  const [tab, setTab] = useQueryState('tab', 'live');
   const [history, setHistory] = useState(null);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [from, setFrom] = useState(dateValue(new Date(Date.now() - (7 * 86_400_000))));
-  const [to, setTo] = useState(dateValue(new Date()));
+  const [from, setFrom] = useQueryState('from', dateValue(new Date(Date.now() - (7 * 86_400_000))));
+  const [to, setTo] = useQueryState('to', dateValue(new Date()));
   const [routeData, setRouteData] = useState(null);
   const [routeLoading, setRouteLoading] = useState('');
   const [savingConfig, setSavingConfig] = useState(false);

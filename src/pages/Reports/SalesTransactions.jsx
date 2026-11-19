@@ -247,7 +247,7 @@ const SalesTransactions = () => {
   const [sort, setSort] = useQueryState('sort', 'newest');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [search, setSearch] = useQueryState('search', '');
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useQueryState('page', 1);
   const [selected, setSelected] = useState(null);
   const { data: linkedOrder } = useGetSalesTransactionByIdQuery(linkedOrderId, {
     skip: !linkedOrderId,

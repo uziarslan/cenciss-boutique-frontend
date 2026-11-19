@@ -445,7 +445,7 @@ const Sessions = () => {
   const { data: outlets = [] } = useGetOutletsQuery();
   const [selectedOutlet, setSelectedOutlet] = useQueryState('outlet', '');
   const [statusFilter, setStatusFilter] = useQueryState('status', '');
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useQueryState('page', 1);
   const [drawerSessionId, setDrawerSessionId] = useState(null);
 
   const queryParams = useMemo(() => {

@@ -25,6 +25,7 @@ import { clearRecipeUnlockToken } from '../../utils/recipeUnlock';
 import { ALL_RECIPE_UNITS, recipeUnitsForProduct } from '../../utils/units';
 import { filterPrepRecipes } from './prepRecipeSearch';
 import PrepRecipeCostDrawer from './PrepRecipeCostDrawer';
+import useQueryState from '../../hooks/useQueryState';
 
 const UNITS = ALL_RECIPE_UNITS;
 const CATEGORY_OPTIONS = [{ value: 'Prep', label: 'Prep' }, ...CATEGORIES.map((c) => ({ value: c, label: c }))];
@@ -362,7 +363,7 @@ const PrepRecipes = ({ outlet, products, canManage, onProductsChanged }) => {
   const [unlockIntent, setUnlockIntent] = useState(null); // 'edit' | 'details'
   // Prep id whose full detail is being fetched (spinner on its Edit button).
   const [openingId, setOpeningId] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useQueryState('search', '');
 
   const outletId = outlet?._id;
 
@@ -379,8 +380,6 @@ const PrepRecipes = ({ outlet, products, canManage, onProductsChanged }) => {
   useEffect(() => {
     setPreps(Array.isArray(prepsPayload) ? prepsPayload : []);
   }, [prepsPayload]);
-
-  useEffect(() => { setSearchQuery(''); }, [outletId]);
 
   const filteredPreps = useMemo(
     () => filterPrepRecipes(preps, searchQuery),

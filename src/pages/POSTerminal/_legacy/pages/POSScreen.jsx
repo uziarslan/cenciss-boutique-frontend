@@ -24,6 +24,7 @@ import POSSidebar, { POSSectionTabs } from '../components/Layout/POSSidebar';
 import OrderHistoryView from '../components/OrderHistory/OrderHistoryView';
 import RiderDispatchPanel from '../components/Deliveries/RiderDispatchPanel';
 import toast from 'react-hot-toast';
+import useQueryState from '../../../../hooks/useQueryState';
 import {
   isPosMenuRevisionKey,
   outletCodeFromRevisionKey,
@@ -43,8 +44,8 @@ const POSScreen = () => {
   const note = useSelector((state) => state.cart.note);
   const cashierNote = useSelector((state) => state.cart.cashierNote || '');
   const orderType = useSelector((state) => state.order.orderType || 'dine-in');
-  const [activeCategoryId, setActiveCategoryId] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategoryId, setActiveCategoryId] = useQueryState('category', 'all');
+  const [searchQuery, setSearchQuery] = useQueryState('search', '');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [successFlash, setSuccessFlash] = useState(false);
   const [refreshing, setRefreshing] = useState(false);

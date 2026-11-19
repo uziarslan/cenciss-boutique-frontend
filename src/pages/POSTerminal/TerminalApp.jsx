@@ -42,6 +42,9 @@ const syncPosAuthFromMain = () => {
           email: user.email,
           role: user.role,
           permissions: user.permissions || {},
+          posDiscountLimitPercent: Number.isFinite(Number(user.posDiscountLimitPercent))
+            ? Number(user.posDiscountLimitPercent)
+            : 100,
           outletCode: user.outletCode || user.outlet || '',
           // Carry the tenant (incl. feature flags) so the POS can gate features
           // like QR self-ordering immediately, before fetchMe re-fetches profile.

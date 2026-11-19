@@ -60,7 +60,7 @@ const MenuManagement = () => {
   const [outletTaxConfigLoading, setOutletTaxConfigLoading] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useQueryState('category', '');
   const [categories, setCategories] = useState([]);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useQueryState('page', 1);
   const [itemSearch, setItemSearch] = useQueryState('search', '');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   // Menu items: paginate WITHIN the selected category (20/page) straight from the

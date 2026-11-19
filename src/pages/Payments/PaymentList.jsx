@@ -85,7 +85,7 @@ const PaymentList = () => {
   const [dateFrom, setDateFrom] = useQueryState('from', '');
   const [dateTo, setDateTo] = useQueryState('to', '');
   const [search, setSearch] = useQueryState('search', '');
-  const [method, setMethod] = useState('');
+  const [method, setMethod] = useQueryState('method', '');
   const [minAmount, setMinAmount] = useQueryState('minAmount', '');
   const [maxAmount, setMaxAmount] = useQueryState('maxAmount', '');
   const [referenceState, setReferenceState] = useQueryState('referenceState', '');
