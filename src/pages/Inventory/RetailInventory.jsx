@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useState } from 'react';
 import { Barcode, Filter, Pencil, Plus, RefreshCw, Save, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router';
-import api from '../../api/axios';
+import { Link } from 'react-router';
 import { createManualRetailProduct } from '../../api/shopifyApi';
 import FloatingSelect from '../../components/UI/FloatingSelect';
 import Pagination from '../../components/UI/Pagination';
-import useDebounce from '../../hooks/useDebounce';
+import useRetailCatalog from '../../hooks/useRetailCatalog';
 import usePermissions from '../../hooks/usePermissions';
 import useQueryState, { useQueryFilters } from '../../hooks/useQueryState';
 
@@ -19,67 +18,38 @@ const blankProduct = () => ({
 });
 const PAGE_SIZE = 50;
 
+const CatalogRows = memo(function CatalogRows({ variants, canManage }) {
+  return <>{variants.map((variant) => {
+              const isManual = variant.catalogSource === 'manual' || !variant.shopifyVariantId;
+              return <tr key={variant._id} className="hover:bg-gray-50/60">
+                <td className="px-4 py-3"><div className="flex items-center gap-3">{variant.product?.imageUrl && <img src={variant.product.imageUrl} alt="" loading="lazy" decoding="async" width="44" height="44" className="h-11 w-11 rounded-lg object-cover" />}<div><p className="font-semibold text-gray-900">{variantLabel(variant)}</p><p className="text-xs text-gray-500">{variant.product?.productType || variant.product?.vendor || 'Boutique product'}</p></div></div></td>
+                <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${(variant.product?.status || 'active') === 'active' ? 'bg-emerald-100 text-emerald-800' : (variant.product?.status === 'draft' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700')}`}>{variant.product?.status || 'active'}</span></td>
+                <td className="px-4 py-3 font-medium text-gray-800">{variant.sku || '—'}</td>
+                <td className="px-4 py-3 font-semibold text-indigo-700">{money(variant.price)}</td>
+                <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${Number(variant.available) > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}`}>{Number(variant.available || 0)} available</span></td>
+                <td className="px-4 py-3"><span className="inline-flex min-w-[120px] items-center gap-1 text-xs text-gray-600"><Barcode size={12} />{variant.barcode || 'No barcode'}</span></td>
+                <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${isManual ? 'bg-violet-100 text-violet-800' : 'bg-blue-100 text-blue-800'}`}>{isManual ? 'Manual' : 'Shopify'}</span></td>
+                <td className="px-4 py-3">{canManage && <Link to={`/retail-inventory/${variant.product?._id}/edit`} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50"><Pencil size={13} />Edit product</Link>}</td>
+              </tr>;
+            })}
+</>;
+});
+
 const RetailInventory = () => {
-  const navigate = useNavigate();
   const { has } = usePermissions();
   const canManage = has('inventory.manage');
-  const [outlets, setOutlets] = useState([]);
   const [outletId, setOutletId] = useQueryState('outlet', '');
-  const [variants, setVariants] = useState([]);
   const [search, setSearch] = useQueryState('search', '');
-  const debouncedSearch = useDebounce(search, 300);
   const [page, setPage] = useQueryState('page', 1);
-  const [pageInfo, setPageInfo] = useState({ total: 0, pages: 1, pageSize: PAGE_SIZE });
-  const [catalogOptions, setCatalogOptions] = useState({ types: [], vendors: [], tags: [], sizes: [], colors: [], optionValues: [] });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useQueryFilters({ source: 'all', status: 'all', type: 'all', vendor: 'all', tag: 'all', size: 'all', color: 'all', optionValue: 'all', stock: 'all', tracked: 'all', barcode: 'all', minPrice: '', maxPrice: '', sort: 'name' });
-  const [loading, setLoading] = useState(true);
   const [savingProduct, setSavingProduct] = useState(false);
   const [showProductForm, setShowProductForm] = useState(false);
   const [productForm, setProductForm] = useState(blankProduct);
 
-  const refresh = useCallback(async (selectedOutlet = outletId, selectedPage = page) => {
-    setLoading(true);
-    try {
-      const setupResponse = await api.get('/api/production/setup', { params: selectedOutlet ? { outletId: selectedOutlet } : {} });
-      const setup = setupResponse.data?.data || {};
-      const availableOutlets = setup.outlets || [];
-      setOutlets(availableOutlets);
-      const effectiveOutlet = selectedOutlet || setup.outletId || '';
-      if (!selectedOutlet && effectiveOutlet) setOutletId(String(effectiveOutlet));
-      const catalogParams = {
-        outletId: effectiveOutlet || undefined,
-        limit: PAGE_SIZE,
-        page: selectedPage,
-        includeInactive: true,
-        withFilterOptions: true,
-        q: debouncedSearch.trim() || undefined,
-        source: filters.source,
-        status: filters.status,
-        type: filters.type,
-        vendor: filters.vendor,
-        tag: filters.tag,
-        size: filters.size,
-        color: filters.color,
-        optionValue: filters.optionValue,
-        stock: filters.stock,
-        tracked: filters.tracked,
-        barcode: filters.barcode,
-        minPrice: filters.minPrice || undefined,
-        maxPrice: filters.maxPrice || undefined,
-        sort: filters.sort,
-      };
-      const response = await api.get('/api/shopify/catalog', { params: catalogParams });
-      const result = response.data?.data || {};
-      setVariants(Array.isArray(result) ? result : (result.items || []));
-      setPageInfo({ total: result.total || 0, pages: Math.max(1, result.totalPages || 1), pageSize: result.pageSize || PAGE_SIZE });
-      setCatalogOptions(result.filterOptions || { types: [], vendors: [], tags: [], sizes: [], colors: [], optionValues: [] });
-      if (result.page && result.page !== selectedPage) setPage(result.page);
-    } catch (error) { toast.error(error.response?.data?.message || 'Could not load finished inventory.'); }
-    finally { setLoading(false); }
-  }, [outletId, page, debouncedSearch, filters, setOutletId, setPage]);
-
-  useEffect(() => { refresh(); }, [refresh]);
+  const { outlets, filterOptions: catalogOptions, optionsReady, optionsLoading, optionsError, result, error, loading, refresh } = useRetailCatalog({ outletId, search, page, filters, setOutletId, setPage });
+  const variants = result?.items || [];
+  const pageInfo = result || { total: 0, pages: 1, pageSize: PAGE_SIZE };
 
   const updateFilters = (next) => { setPage(1); setFilters(next); };
   const updateSearch = (value) => { setPage(1); setSearch(value); };
@@ -106,7 +76,7 @@ const RetailInventory = () => {
       toast.success('Manual product and variant added to the local catalog.');
       setShowProductForm(false);
       setProductForm(blankProduct());
-      await refresh(outletId);
+      refresh();
     } catch (error) { toast.error(error.response?.data?.message || 'Could not add this product.'); }
     finally { setSavingProduct(false); }
   };
@@ -116,10 +86,10 @@ const RetailInventory = () => {
   return (
     <div className="space-y-5 py-4">
       <header className="flex flex-wrap items-start justify-between gap-3">
-        <div><h1 className="text-xl font-extrabold text-gray-900">Finished Goods</h1><p className="mt-1 text-sm text-gray-500">Local and Shopify-linked variants share the catalog used by Manufacturing and the boutique POS. Draft products appear here for editing; only active products are sellable.</p></div>
+        <div><h1 className="text-xl font-extrabold text-gray-900">Finished Goods</h1><p className="mt-1 text-sm text-gray-500">Manage your products, prices and stock. Draft products stay here until they are ready to sell.</p></div>
         <div className="flex gap-2">
           {canManage && <button onClick={() => setShowProductForm((open) => !open)} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white"><Plus size={15} />Add manual product</button>}
-          <button onClick={() => refresh(outletId)} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700"><RefreshCw size={15} className={loading ? 'animate-spin' : ''} />Refresh stock</button>
+          <button onClick={refresh} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700"><RefreshCw size={15} className={loading ? 'animate-spin' : ''} />Refresh stock</button>
         </div>
       </header>
 
@@ -148,7 +118,7 @@ const RetailInventory = () => {
 
       <div className="flex flex-wrap gap-3 rounded-2xl border border-gray-200 bg-white p-4">
         {outlets.length > 1 && <FloatingSelect label="Outlet" options={outletOptions} value={outletId} onChange={updateOutlet} containerClassName="min-w-[220px]" />}
-        <label className="relative min-w-[240px] flex-1 text-xs font-semibold text-gray-600">Search products, SKU, barcode, size or color<div className="relative mt-1"><Barcode size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" /><input className="w-full rounded-xl border border-gray-300 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-indigo-500" value={search} onChange={(event) => updateSearch(event.target.value)} placeholder="Search finished goods" /></div></label>
+        <label className="relative min-w-[240px] flex-1 text-xs font-semibold text-gray-600">Search products, SKU, barcode, size or color<div className="relative mt-1"><Barcode size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" /><input className="w-full rounded-xl border border-gray-300 py-2.5 pl-9 pr-10 text-sm outline-none focus:border-indigo-500" value={search} onChange={(event) => updateSearch(event.target.value)} placeholder="Search finished goods" autoComplete="off" />{search && <button type="button" onClick={() => updateSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="Clear search"><X size={16} /></button>}</div></label>
         <button onClick={() => setFiltersOpen((open) => !open)} className="inline-flex items-center gap-2 self-end rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50" aria-expanded={filtersOpen}><Filter size={15} />Filters{activeFilterCount > 0 && <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700">{activeFilterCount}</span>}</button>
       </div>
       {filtersOpen && <section className="rounded-2xl border border-gray-200 bg-white p-4" aria-label="Advanced product filters">
@@ -170,31 +140,26 @@ const RetailInventory = () => {
           <label className="text-xs font-semibold text-gray-600">Sort by<select value={filters.sort} onChange={(event) => updateFilters((current) => ({ ...current, sort: event.target.value }))} className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm"><option value="name">Name (A–Z)</option><option value="priceAsc">Price (low to high)</option><option value="priceDesc">Price (high to low)</option><option value="stockAsc">Stock (low to high)</option><option value="stockDesc">Stock (high to low)</option></select></label>
         </div>
       </section>}
-      {!outlets.length && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Create an outlet before adding finished products. Shopify is optional for local products.</div>}
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      {optionsReady && !optionsLoading && !optionsError && !outlets.length && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Create an outlet before adding finished products. Shopify is optional for local products.</div>}
+      {optionsError && <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{optionsError}<button onClick={refresh} className="font-semibold underline">Retry</button></div>}
+      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm" aria-busy={loading}>
+        <div className="flex min-h-12 flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3">
+          <p role="status" className="flex items-center gap-2 text-xs font-medium text-gray-500">{loading ? <><RefreshCw size={13} className="animate-spin text-indigo-600" />{result ? 'Updating results…' : 'Loading products…'}</> : error ? 'Results could not be updated' : `${pageInfo.total.toLocaleString()} variants · 50 per page`}</p>
+          {(activeFilterCount > 0 || search || filters.sort !== 'name') && <button onClick={() => { updateFilters({}); updateSearch(''); }} className="text-xs font-semibold text-indigo-600 hover:underline">Clear search & filters</button>}
+        </div>
+        {error && <div role="alert" className="flex items-center justify-between gap-3 border-b border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700"><span>{error}{result ? ' Previously loaded results are shown below.' : ''}</span><button onClick={refresh} className="shrink-0 font-semibold underline">Retry</button></div>}
         <div className="overflow-x-auto"><table className="w-full min-w-[1040px] text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wide text-gray-500"><tr><th className="px-4 py-3">Product variant</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">SKU</th><th className="px-4 py-3">Price</th><th className="px-4 py-3">Sellable qty</th><th className="px-4 py-3">Barcode</th><th className="px-4 py-3">Source</th><th className="px-4 py-3">Action</th></tr></thead>
           <tbody className="divide-y divide-gray-100">
-            {filtered.map((variant) => {
-              const isManual = variant.catalogSource === 'manual' || !variant.shopifyVariantId;
-              return <tr key={variant._id}>
-                <td className="px-4 py-3"><div className="flex items-center gap-3">{variant.product?.imageUrl && <img src={variant.product.imageUrl} alt="" className="h-11 w-11 rounded-lg object-cover" />}<div><p className="font-semibold text-gray-900">{variantLabel(variant)}</p><p className="text-xs text-gray-500">{variant.product?.productType || variant.product?.vendor || 'Boutique product'}</p></div></div></td>
-                <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${(variant.product?.status || 'active') === 'active' ? 'bg-emerald-100 text-emerald-800' : (variant.product?.status === 'draft' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700')}`}>{variant.product?.status || 'active'}</span></td>
-                <td className="px-4 py-3 font-medium text-gray-800">{variant.sku || '—'}</td>
-                <td className="px-4 py-3 font-semibold text-indigo-700">{money(variant.price)}</td>
-                <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${Number(variant.available) > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}`}>{Number(variant.available || 0)} available</span></td>
-                <td className="px-4 py-3"><span className="inline-flex min-w-[120px] items-center gap-1 text-xs text-gray-600"><Barcode size={12} />{variant.barcode || 'No barcode'}</span></td>
-                <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${isManual ? 'bg-violet-100 text-violet-800' : 'bg-blue-100 text-blue-800'}`}>{isManual ? 'Manual' : 'Shopify'}</span></td>
-                <td className="px-4 py-3">{canManage && <button onClick={() => navigate(`/retail-inventory/${variant.product?._id}/edit`)} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50"><Pencil size={13} />Edit product</button>}</td>
-              </tr>;
-            })}
-            {!loading && !filtered.length && <tr><td colSpan="8" className="px-4 py-12 text-center text-gray-500">{pageInfo.total ? 'No finished goods on this page.' : activeFilterCount || search.trim() ? 'No products match these filters. Clear filters to see the full catalog.' : 'No catalog variants were found for this outlet. Check the Shopify location mapping, then refresh stock or sync the catalog.'}</td></tr>}
+            {!result && loading && Array.from({ length: 6 }, (_, row) => <tr key={row} aria-hidden="true">{Array.from({ length: 8 }, (_, column) => <td key={column} className="px-4 py-5"><div className="h-5 animate-pulse rounded bg-gray-100" /></td>)}</tr>)}
+            <CatalogRows variants={variants} canManage={canManage} />
+            {!loading && !error && !filtered.length && <tr><td colSpan="8" className="px-4 py-12 text-center text-gray-500">{pageInfo.total ? 'No finished goods on this page.' : activeFilterCount || search.trim() ? 'No products match these filters. Clear filters to see the full catalog.' : 'No catalog variants were found for this outlet. Check the Shopify location mapping, then refresh stock or sync the catalog.'}</td></tr>}
           </tbody>
         </table></div>
-        <div className="border-t border-gray-100 px-4 py-3 text-xs text-gray-500">Showing {filtered.length} of {pageInfo.total} variants. Local stock updates through manufacturing and POS; Shopify-linked stock follows Shopify sync.</div>
-        <div className="px-4 pb-4">
+        <div className="border-t border-gray-100 px-4 py-3 text-xs text-gray-500">Stock reflects the latest completed updates. Use Refresh stock to reload.</div>
+        <div className="px-4 pb-4" inert={loading || Boolean(error) ? true : undefined}>
           <Pagination
-            page={page}
+            page={result?.page || page}
             pages={pageInfo.pages}
             total={pageInfo.total}
             pageSize={pageInfo.pageSize}
