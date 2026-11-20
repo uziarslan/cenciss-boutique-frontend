@@ -6,6 +6,8 @@ import Pagination from '../../components/UI/Pagination';
 import useQueryState from '../../hooks/useQueryState';
 import {
   connectShopify,
+  retryShopifyTask,
+  cancelShopifyTask,
   cancelShopifyCatalogSync,
   getShopifyEvents,
   getShopifyLocations,
@@ -106,7 +108,7 @@ const ShopifySettings = () => {
       const task = response?.data?.data?.task;
       if (task) {
         setBackgroundTasks((current) => [task, ...current.filter((item) => item._id !== task._id)].slice(0, 20));
-        if (task.type === 'catalog-sync') setConnection((current) => ({
+        if (task.type === 'catalog-sync' && task.status === 'pending') setConnection((current) => ({
           ...current,
           catalogSync: { status: 'running', startedAt: task.createdAt, finishedAt: null, productsWritten: 0, variantsWritten: 0, pages: 0, stage: 'Queued for background processing…', error: '' },
         }));
@@ -254,10 +256,27 @@ const ShopifySettings = () => {
       <section className="rounded-xl border border-gray-200 bg-white p-5">
         <div className="flex items-center justify-between gap-3"><div><h3 className="font-semibold text-gray-900">Background Shopify work</h3><p className="mt-1 text-sm text-gray-500">Product changes, catalog imports, order imports, and webhook setup continue while you use the app.</p></div>{hasBackgroundWork && <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">Updating automatically</span>}</div>
         <div className="mt-4 divide-y divide-gray-100">
-          {backgroundTasks.map((task) => <div key={task._id} className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0">
-            <div><p className="text-sm font-medium text-gray-800">{({ 'catalog-sync': 'Catalog sync', 'product-update': 'Product update', 'barcode-update': 'Barcode update', 'order-reconcile': 'Recent order import', 'webhook-register': 'Webhook registration' })[task.type] || 'Shopify update'}</p><p className="text-xs text-gray-500">Started {dateText(task.startedAt || task.createdAt)}{task.attempts > 0 ? ` · Attempt ${task.attempts}` : ''}</p>{task.lastError && <p className="mt-1 text-xs text-red-700">{task.lastError}</p>}</div>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${task.status === 'complete' ? 'bg-emerald-100 text-emerald-800' : task.status === 'failed' ? 'bg-red-100 text-red-800' : task.status === 'cancelled' ? 'bg-gray-100 text-gray-700' : 'bg-indigo-100 text-indigo-800'}`}>{task.status === 'pending' ? 'Queued' : task.status === 'processing' ? (task.cancelRequested ? 'Cancelling' : 'In progress') : task.status}</span>
-          </div>)}
+          {backgroundTasks.map((task) => {
+            const taskError = task.lastError && task.lastError !== 'Cancelled by user.';
+            const stopped = ['failed', 'cancelled'].includes(task.status);
+            const active = ['pending', 'processing'].includes(task.status);
+            const label = task.cancelRequested ? 'Stopping…' : task.status === 'pending' ? (task.lastError ? 'Needs attention' : 'Queued') : task.status === 'processing' ? 'In progress' : task.status === 'complete' ? 'Completed' : taskError && stopped ? 'Stopped · error' : 'Cancelled';
+            return <div key={task._id} className="flex flex-wrap items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-900">{({ 'catalog-sync': 'Catalog sync', 'product-update': 'Product update', 'barcode-update': 'Barcode update', 'order-reconcile': 'Recent order import', 'webhook-register': 'Webhook registration' })[task.type] || 'Shopify update'}</p>
+                <p className="mt-1 text-xs text-gray-500">Queued {dateText(task.createdAt)}{task.startedAt ? ` · Last started ${dateText(task.startedAt)}` : ''}{task.attempts > 0 ? ` · Attempt ${task.attempts}` : ''}</p>
+                {task.finishedAt && <p className="mt-1 text-xs text-gray-500">Finished {dateText(task.finishedAt)}</p>}
+                {taskError && <div role="status" className="mt-2 rounded-lg border border-red-100 bg-red-50 p-3 text-xs text-red-800 break-words"><p>{task.lastError}</p>{/is not defined/.test(task.lastError) && <p className="mt-1">Restart all local and hosted Shopify workers after deploying the backend update, then retry this task.</p>}{stopped && <p className="mt-1">Automatic processing stopped. Correct the issue, then retry. Changes already sent to Shopify are retained.</p>}</div>}
+                {task.cancelRequested && <p className="mt-2 text-xs text-amber-800">Stopping after the current request. Changes already applied will remain.</p>}
+                {task.status === 'pending' && !task.lastError && <p className="mt-2 text-xs text-gray-500">Waiting for the Shopify worker. If this remains queued, check that the worker is running.</p>}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${task.status === 'complete' ? 'bg-emerald-100 text-emerald-800' : taskError ? 'bg-red-100 text-red-800' : stopped ? 'bg-gray-100 text-gray-700' : 'bg-indigo-100 text-indigo-800'}`}>{label}</span>
+                {(stopped || (task.status === 'pending' && task.lastError)) && <button type="button" disabled={!!working} onClick={() => runAction(`task-retry:${task._id}`, () => retryShopifyTask(task._id), 'Task queued for retry.')} className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"><RotateCw size={14} />{working === `task-retry:${task._id}` ? 'Retrying…' : 'Retry'}</button>}
+                {(active || task.status === 'failed') && <button type="button" disabled={!!working || task.cancelRequested} onClick={() => runAction(`task-cancel:${task._id}`, () => cancelShopifyTask(task._id), 'Task cancellation requested.')} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"><XCircle size={14} />Cancel</button>}
+              </div>
+            </div>;
+          })}
           {!backgroundTasks.length && <p className="py-2 text-sm text-gray-500">No background Shopify tasks yet.</p>}
         </div>
       </section>

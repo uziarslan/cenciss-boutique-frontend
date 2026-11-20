@@ -17,3 +17,6 @@ export const createManualRetailProduct = (payload) => api.post('/api/shopify/cat
 export const updateRetailBarcode = (variantId, barcode) => api.patch(`/api/shopify/variants/${encodeURIComponent(variantId)}/barcode`, { barcode });
 export const getRetailProduct = (productId) => api.get(`/api/shopify/catalog/products/${encodeURIComponent(productId)}`);
 export const updateRetailProduct = (productId, payload) => api.put(`/api/shopify/catalog/products/${encodeURIComponent(productId)}`, payload);
+
+export const retryShopifyTask = (id) => api.post(`/api/shopify/tasks/${encodeURIComponent(id)}/retry`);
+export const cancelShopifyTask = (id) => api.post(`/api/shopify/tasks/${encodeURIComponent(id)}/cancel`);
